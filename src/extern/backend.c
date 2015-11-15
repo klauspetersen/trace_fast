@@ -121,6 +121,8 @@
 
 static void print_versions(void)
 {
+#if 0
+
 	GString *s;
 #if defined(HAVE_LIBUSB_1_0) && !defined(__FreeBSD__)
 	const struct libusb_version *lv;
@@ -198,6 +200,7 @@ static void print_versions(void)
 	sr_dbg("%s", s->str);
 
 	g_string_free(s, TRUE);
+#endif
 }
 
 /**
@@ -220,6 +223,7 @@ static int sanity_check_all_drivers(const struct sr_context *ctx)
 
 	sr_spew("Sanity-checking all drivers.");
 
+#if 0
 	drivers = sr_driver_list(ctx);
 	for (i = 0; drivers[i]; i++) {
 		errors = 0;
@@ -289,7 +293,7 @@ static int sanity_check_all_drivers(const struct sr_context *ctx)
 
 		ret = SR_ERR;
 	}
-
+#endif
 	return ret;
 }
 
@@ -302,6 +306,7 @@ static int sanity_check_all_drivers(const struct sr_context *ctx)
 static int sanity_check_all_input_modules(void)
 {
 	int i, errors, ret = SR_OK;
+#if 0
 	const struct sr_input_module **inputs;
 	const char *d;
 
@@ -343,7 +348,7 @@ static int sanity_check_all_input_modules(void)
 
 		ret = SR_ERR;
 	}
-
+#endif
 	return ret;
 }
 
@@ -356,6 +361,7 @@ static int sanity_check_all_input_modules(void)
 static int sanity_check_all_output_modules(void)
 {
 	int i, errors, ret = SR_OK;
+#if 0
 	const struct sr_output_module **outputs;
 	const char *d;
 
@@ -376,7 +382,7 @@ static int sanity_check_all_output_modules(void)
 			errors++;
 		}
 		if (!outputs[i]->desc) {
-			sr_err("No description in module '%s'.", d);
+			sr_err("no description in module '%s'.", d);
 			errors++;
 		}
 		if (!outputs[i]->receive) {
@@ -389,7 +395,7 @@ static int sanity_check_all_output_modules(void)
 
 		ret = SR_ERR;
 	}
-
+#endif
 	return ret;
 }
 
@@ -402,6 +408,7 @@ static int sanity_check_all_output_modules(void)
 static int sanity_check_all_transform_modules(void)
 {
 	int i, errors, ret = SR_OK;
+#if 0
 	const struct sr_transform_module **transforms;
 	const char *d;
 
@@ -438,7 +445,7 @@ static int sanity_check_all_transform_modules(void)
 
 		ret = SR_ERR;
 	}
-
+#endif
 	return ret;
 }
 
@@ -463,7 +470,6 @@ SR_API int sr_init(struct sr_context **ctx)
 	int ret = SR_ERR;
 	struct sr_context *context;
 	struct sr_dev_driver ***lists, **drivers;
-	GArray *array;
 
 	print_versions();
 
@@ -474,6 +480,8 @@ SR_API int sr_init(struct sr_context **ctx)
 
 	context = g_malloc0(sizeof(struct sr_context));
 
+#if 0
+	GArray *array;
 	/* Generate ctx->driver_list at runtime. */
 	array = g_array_new(TRUE, FALSE, sizeof(struct sr_dev_driver *));
 	for (lists = drivers_lists; *lists; lists++)
@@ -481,6 +489,7 @@ SR_API int sr_init(struct sr_context **ctx)
 			g_array_append_val(array, *drivers);
 	context->driver_list = (struct sr_dev_driver **)array->data;
 	g_array_free(array, FALSE);
+#endif
 
 	if (sanity_check_all_drivers(context) < 0) {
 		sr_err("Internal driver error(s), aborting.");

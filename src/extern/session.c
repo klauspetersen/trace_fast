@@ -786,7 +786,9 @@ SR_API int sr_session_start(struct sr_session *session)
 			sr_err("Could not start %s device %s acquisition.",
 				sdi->driver->name, sdi->connection_id);
 			break;
-		}
+		} else {
+	        sr_info("Device started.");
+        }
 	}
 
 	if (ret != SR_OK) {

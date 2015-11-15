@@ -143,6 +143,8 @@ static GSList *scan(struct sr_dev_driver *di, GSList *options)
 	const char *conn;
 	char connection_id[64];
 
+	sr_info("Scanning for device.");
+
 	drvc = di->context;
 
 	conn = NULL;
@@ -695,6 +697,8 @@ static int dev_acquisition_start(const struct sr_dev_inst *sdi, void *cb_data)
 	devc = sdi->priv;
 	usb = sdi->conn;
 
+	sr_info("dev_acquisition_start");
+
 	/* Configures devc->cur_channels. */
 	if (configure_channels(sdi) != SR_OK) {
 		sr_err("Failed to configure channels.");
@@ -747,6 +751,9 @@ static int dev_acquisition_start(const struct sr_dev_inst *sdi, void *cb_data)
 			}
 			return SR_ERR_MALLOC;
 		}
+	
+        sr_info("libusb_alloc_transfer");
+
 		transfer = libusb_alloc_transfer(0);
 		libusb_fill_bulk_transfer(transfer, usb->devhdl,
 				2 | LIBUSB_ENDPOINT_IN, buf, size,
@@ -758,14 +765,25 @@ static int dev_acquisition_start(const struct sr_dev_inst *sdi, void *cb_data)
 			g_free(buf);
 			abort_acquisition(devc);
 			return SR_ERR;
-		}
+		} else {
+
+            sr_info("Transfer submitted succesfully");
+
+        }
+
 		devc->transfers[i] = transfer;
 		devc->submitted_transfers++;
 	}
 
 	devc->ctx = drvc->sr_ctx;
 
-	usb_source_add(sdi->session, devc->ctx, timeout, receive_data, (void *)sdi);
+    sr_info("usb_source_add");
+
+	if(usb_source_add(sdi->session, devc->ctx, timeout, receive_data, (void *)sdi) != SR_OK){
+		sr_err("usb_source_add failed");
+    } else {
+        sr_info("usb_source_add success");
+    }
 
 	/* Send header packet to the session bus. */
 	std_session_send_df_header(cb_data, LOG_PREFIX);

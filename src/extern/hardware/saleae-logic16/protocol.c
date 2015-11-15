@@ -669,6 +669,8 @@ SR_PRIV int logic16_start_acquisition(const struct sr_dev_inst *sdi)
 	int ret;
 	struct dev_context *devc;
 
+    sr_info("logic16_start_acquisition");
+
 	devc = sdi->priv;
 
 	if ((ret = do_ep1_command(sdi, command, 1, NULL, 0)) != SR_OK)
@@ -685,6 +687,8 @@ SR_PRIV int logic16_abort_acquisition(const struct sr_dev_inst *sdi)
 	int ret;
 	uint8_t sta_con_reg;
 	struct dev_context *devc;
+
+    sr_info("logic16_abort_acquisition");
 
 	devc = sdi->priv;
 
@@ -729,6 +733,8 @@ SR_PRIV int logic16_init_device(const struct sr_dev_inst *sdi)
 
 	devc = sdi->priv;
 
+    sr_info("logic16_init_device");
+
 	devc->cur_voltage_range = VOLTAGE_RANGE_UNKNOWN;
 
 	if ((ret = abort_acquisition_sync(sdi)) != SR_OK)
@@ -757,8 +763,11 @@ SR_PRIV int logic16_init_device(const struct sr_dev_inst *sdi)
 
 static void finish_acquisition(struct sr_dev_inst *sdi)
 {
+
 	struct sr_datafeed_packet packet;
 	struct dev_context *devc;
+
+    sr_info("finish_acquisition");
 
 	devc = sdi->priv;
 
@@ -802,6 +811,8 @@ static void free_transfer(struct libusb_transfer *transfer)
 static void resubmit_transfer(struct libusb_transfer *transfer)
 {
 	int ret;
+
+    sr_info("resubmit_transfer");
 
 	if ((ret = libusb_submit_transfer(transfer)) == LIBUSB_SUCCESS)
 		return;
@@ -867,6 +878,8 @@ SR_PRIV void LIBUSB_CALL logic16_receive_transfer(struct libusb_transfer *transf
 
 	sdi = transfer->user_data;
 	devc = sdi->priv;
+
+    sr_info("logic16_receive_transfer");
 
 	/*
 	 * If acquisition has already ended, just free any queued up
