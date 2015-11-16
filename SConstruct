@@ -9,7 +9,7 @@ env = Environment(
                 CCFLAGS = '-g `pkg-config --cflags glib-2.0 libusb-1.0` -Wno-deprecated-register',
                 CXX = 'clang++',
                 CXXFLAGS = '-g -std=c++11 -stdlib=libstdc++ `pkg-config --cflags glib-2.0` ',
-                LINKFLAGS = '-stdlib=libstdc++ `pkg-config --libs glib-2.0 libusb-1.0` ',
+                LINKFLAGS = '-stdlib=libstdc++ -pthread `pkg-config --libs glib-2.0 libusb-1.0` ',
                 LIBS = ['glib-2.0'] )
 
 includes = Split(

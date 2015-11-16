@@ -1,17 +1,26 @@
 #include <iostream>
 #include <glib.h>
 #include <unistd.h>
+#include <thread>
 #include "libsigrok.h"
 #include "proto.h"
 #include "libsigrok-internal.h"
 
 #define LOG_PREFIX "main"
 
+using namespace std;
+
 extern SR_PRIV struct sr_dev_driver saleae_logic16_driver_info;
 
 struct sr_context *sr_ctx = NULL;
 
-using namespace std;
+static void foo(){
+    while(1){
+        sleep(1);
+        cout << "Tick" << endl;
+    }
+}
+
 int main()
 {
 	struct sr_dev_inst *sdi;
@@ -19,6 +28,8 @@ int main()
     struct sr_session *session;
     GSList *devices, *l;
 	GMainLoop *main_loop;
+
+    std::thread first (foo);     // spawn new thread that calls foo()
 
     cout << "trace_fast!" << endl;
     
@@ -31,6 +42,11 @@ int main()
     if(sr_session_new(sr_ctx, &session) != SR_OK){
         g_critical("Failed to initialize session.");
         return 0;
+    }
+
+
+	if(sr_session_datafeed_callback_add(session, datafeed_in, NULL) != SR_OK){
+        g_critical("Failed to add callback");
     }
 
     if (sr_driver_init(sr_ctx, driver) != SR_OK) {

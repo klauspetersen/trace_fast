@@ -372,7 +372,8 @@ static int dev_open(struct sr_dev_inst *sdi)
 
 	if (devc->cur_samplerate == 0) {
 		/* Samplerate hasn't been set; default to the slowest one. */
-		devc->cur_samplerate = samplerates[0];
+		devc->cur_samplerate = SR_MHZ(16);
+		sr_info("Samplerate set to %d", (uint32_t)devc->cur_samplerate);
 	}
 
 	return SR_OK;
@@ -660,6 +661,8 @@ static int receive_data(int fd, int revents, void *cb_data)
 
 	(void)fd;
 	(void)revents;
+
+	sr_info("receive_data");
 
 	sdi = cb_data;
 	di = sdi->driver;
