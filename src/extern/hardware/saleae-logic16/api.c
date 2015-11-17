@@ -372,7 +372,7 @@ static int dev_open(struct sr_dev_inst *sdi)
 
 	if (devc->cur_samplerate == 0) {
 		/* Samplerate hasn't been set; default to the slowest one. */
-		devc->cur_samplerate = SR_MHZ(16);
+		devc->cur_samplerate = SR_KHZ(500);
 		sr_info("Samplerate set to %d", (uint32_t)devc->cur_samplerate);
 	}
 

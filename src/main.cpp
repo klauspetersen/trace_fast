@@ -5,6 +5,7 @@
 #include "libsigrok.h"
 #include "proto.h"
 #include "libsigrok-internal.h"
+#include "ProducerConsumerQueue.h"
 
 #define LOG_PREFIX "main"
 
@@ -12,9 +13,10 @@ using namespace std;
 
 extern SR_PRIV struct sr_dev_driver saleae_logic16_driver_info;
 
+folly::ProducerConsumerQueue<folly::fbstring> queue;
 struct sr_context *sr_ctx = NULL;
 
-static void foo(){
+static void consumer_recv(){
     while(1){
         sleep(1);
         cout << "Tick" << endl;
@@ -24,16 +26,15 @@ static void foo(){
 void datafeed_in(const struct sr_dev_inst *sdi, const struct sr_datafeed_packet *packet, void *cb_data){
     /* If the first packet to come in isn't a header, don't even try. */
     struct sr_datafeed_logic *logic;
-    uint8_t *data;
-
+    uint8_t data;
 
     if (packet->type != SR_DF_HEADER){
         logic = (struct sr_datafeed_logic *)packet->payload;
-
+   
         cout << "Data" << endl;
         for(int i=0; i<logic->length; i++){
-            data = (uint8_t *)logic->data;
-            cout << hex << static_cast<int>(*data);
+            data = ((uint8_t *)(logic->data))[i];
+            cout << "value is " << unsigned(data) << endl;
         }
     } 
 }
@@ -47,7 +48,7 @@ int main()
     GSList *devices, *l;
     GMainLoop *main_loop;
 
-    std::thread first (foo);     // spawn new thread that calls foo()
+    std::thread consumer_thread(consumer_recv);     // spawn new thread that calls foo()
 
     cout << "trace_fast!" << endl;
     
@@ -75,7 +76,7 @@ int main()
     devices = sr_driver_scan(driver, NULL);
 
     for (l = devices; l; l = l->next) {
-	sdi = (struct sr_dev_inst *)l->data;
+    	sdi = (struct sr_dev_inst *)l->data;
 
         if(sr_session_dev_add(session, sdi) != SR_OK) {
             g_critical("Failed to add device to session.");

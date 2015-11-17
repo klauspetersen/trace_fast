@@ -931,29 +931,28 @@ SR_PRIV void LIBUSB_CALL logic16_receive_transfer(struct libusb_transfer *transf
 		devc->empty_transfer_count = 0;
 	}
 
-	new_samples = convert_sample_data(devc, devc->convbuffer,
-			devc->convbuffer_size, transfer->buffer, transfer->actual_length);
+	new_samples = convert_sample_data(devc, devc->convbuffer, devc->convbuffer_size, transfer->buffer, transfer->actual_length);
 
 	if (new_samples > 0) {
-                /* Send the incoming transfer to the session bus. */
-                packet.type = SR_DF_LOGIC;
-                packet.payload = &logic;
-                if (devc->limit_samples &&
-                                new_samples > devc->limit_samples - devc->sent_samples)
-                        new_samples = devc->limit_samples - devc->sent_samples;
-                logic.length = new_samples * 2;
-                logic.unitsize = 2;
-                logic.data = devc->convbuffer;
-                sr_session_send(devc->cb_data, &packet);
-                devc->sent_samples += new_samples;
+        /* Send the incoming transfer to the session bus. */
+        packet.type = SR_DF_LOGIC;
+        packet.payload = &logic;
 
-		if (devc->limit_samples &&
-				(uint64_t)devc->sent_samples >= devc->limit_samples) {
+        if (devc->limit_samples && new_samples > devc->limit_samples - devc->sent_samples){
+                new_samples = devc->limit_samples - devc->sent_samples;
+        }
+
+        logic.length = new_samples * 2;
+        logic.unitsize = 2;
+        logic.data = devc->convbuffer;
+        sr_session_send(devc->cb_data, &packet);
+        devc->sent_samples += new_samples;
+
+		if (devc->limit_samples && (uint64_t)devc->sent_samples >= devc->limit_samples) {
 			devc->sent_samples = -2;
 			free_transfer(transfer);
 			return;
 		}
 	}
-
 	resubmit_transfer(transfer);
 }
