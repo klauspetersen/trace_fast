@@ -1064,9 +1064,7 @@ SR_PRIV int sr_session_send(const struct sr_dev_inst *sdi,
 {
 	GSList *l;
 	struct datafeed_callback *cb_struct;
-	struct sr_datafeed_packet *packet_in, *packet_out;
-	struct sr_transform *t;
-	int ret;
+	struct sr_datafeed_packet *packet_out;
 
 	if (!sdi) {
 		sr_err("%s: sdi was NULL", __func__);
@@ -1083,77 +1081,8 @@ SR_PRIV int sr_session_send(const struct sr_dev_inst *sdi,
 		return SR_ERR_BUG;
 	}
 
-	if (packet->type == SR_DF_ANALOG_OLD) {
-		/* Convert to SR_DF_ANALOG. */
-		const struct sr_datafeed_analog_old *analog_old = packet->payload;
-		struct sr_analog_encoding encoding;
-		struct sr_analog_meaning meaning;
-		struct sr_analog_spec spec;
-		struct sr_datafeed_analog analog;
-		struct sr_datafeed_packet new_packet;
-		new_packet.type = SR_DF_ANALOG;
-		new_packet.payload = &analog;
-		analog.data = analog_old->data;
-		analog.num_samples = analog_old->num_samples;
-		analog.encoding = &encoding;
-		analog.meaning = &meaning;
-		analog.spec = &spec;
-		encoding.unitsize = sizeof(float);
-		encoding.is_signed = TRUE;
-		encoding.is_float = TRUE;
-#ifdef WORDS_BIGENDIAN
-		encoding.is_bigendian = TRUE;
-#else
-		encoding.is_bigendian = FALSE;
-#endif
-		encoding.digits = 0;
-		encoding.is_digits_decimal = FALSE;
-		encoding.scale.p = 1;
-		encoding.scale.q = 1;
-		encoding.offset.p = 0;
-		encoding.offset.q = 1;
-		meaning.mq = analog_old->mq;
-		meaning.unit = analog_old->unit;
-		meaning.mqflags = analog_old->mqflags;
-		meaning.channels = analog_old->channels;
-		spec.spec_digits = 0;
-		return sr_session_send(sdi, &new_packet);
-	}
-
 	/*
-	 * Pass the packet to the first transform module. If that returns
-	 * another packet (instead of NULL), pass that packet to the next
-	 * transform module in the list, and so on.
-	 */
-	packet_in = (struct sr_datafeed_packet *)packet;
-	for (l = sdi->session->transforms; l; l = l->next) {
-		t = l->data;
-		sr_spew("Running transform module '%s'.", t->module->id);
-		ret = t->module->receive(t, packet_in, &packet_out);
-		if (ret < 0) {
-			sr_err("Error while running transform module: %d.", ret);
-			return SR_ERR;
-		}
-		if (!packet_out) {
-			/*
-			 * If any of the transforms don't return an output
-			 * packet, abort.
-			 */
-			sr_spew("Transform module didn't return a packet, aborting.");
-			return SR_OK;
-		} else {
-			/*
-			 * Use this transform module's output packet as input
-			 * for the next transform module.
-			 */
-			packet_in = packet_out;
-		}
-	}
-	packet = packet_in;
-
-	/*
-	 * If the last transform did output a packet, pass it to all datafeed
-	 * callbacks.
+	 * Pass the packet to all callbacks.
 	 */
 	for (l = sdi->session->datafeed_callbacks; l; l = l->next) {
 		if (sr_log_loglevel_get() >= SR_LOG_DBG)

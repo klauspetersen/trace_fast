@@ -879,7 +879,7 @@ SR_PRIV void LIBUSB_CALL logic16_receive_transfer(struct libusb_transfer *transf
 	sdi = transfer->user_data;
 	devc = sdi->priv;
 
-    sr_info("logic16_receive_transfer");
+        sr_info("logic16_receive_transfer");
 
 	/*
 	 * If acquisition has already ended, just free any queued up

@@ -21,13 +21,31 @@ static void foo(){
     }
 }
 
+void datafeed_in(const struct sr_dev_inst *sdi, const struct sr_datafeed_packet *packet, void *cb_data){
+    /* If the first packet to come in isn't a header, don't even try. */
+    struct sr_datafeed_logic *logic;
+    uint8_t *data;
+
+
+    if (packet->type != SR_DF_HEADER){
+        logic = (struct sr_datafeed_logic *)packet->payload;
+
+        cout << "Data" << endl;
+        for(int i=0; i<logic->length; i++){
+            data = (uint8_t *)logic->data;
+            cout << hex << static_cast<int>(*data);
+        }
+    } 
+}
+
+
 int main()
 {
-	struct sr_dev_inst *sdi;
+    struct sr_dev_inst *sdi;
     struct sr_dev_driver *driver;
     struct sr_session *session;
     GSList *devices, *l;
-	GMainLoop *main_loop;
+    GMainLoop *main_loop;
 
     std::thread first (foo);     // spawn new thread that calls foo()
 
@@ -45,7 +63,7 @@ int main()
     }
 
 
-	if(sr_session_datafeed_callback_add(session, datafeed_in, NULL) != SR_OK){
+    if(sr_session_datafeed_callback_add(session, datafeed_in, NULL) != SR_OK){
         g_critical("Failed to add callback");
     }
 
@@ -56,8 +74,8 @@ int main()
 
     devices = sr_driver_scan(driver, NULL);
 
-	for (l = devices; l; l = l->next) {
-		sdi = (struct sr_dev_inst *)l->data;
+    for (l = devices; l; l = l->next) {
+	sdi = (struct sr_dev_inst *)l->data;
 
         if(sr_session_dev_add(session, sdi) != SR_OK) {
             g_critical("Failed to add device to session.");
@@ -70,14 +88,14 @@ int main()
         }
     }
 
-	main_loop = g_main_loop_new(NULL, FALSE);
+    main_loop = g_main_loop_new(NULL, FALSE);
 
     if(sr_session_start(session) != SR_OK){
         g_critical("Failed to start session.");
         return 0;
     }
 
-	g_main_loop_run(main_loop);
+    g_main_loop_run(main_loop);
 
     while(1){
         sleep(1);
