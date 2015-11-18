@@ -372,7 +372,9 @@ static int dev_open(struct sr_dev_inst *sdi)
 
 	if (devc->cur_samplerate == 0) {
 		/* Samplerate hasn't been set; default to the slowest one. */
-		devc->cur_samplerate = SR_KHZ(500);
+		devc->cur_samplerate =  
+                SR_KHZ(500);
+
 		sr_info("Samplerate set to %d", (uint32_t)devc->cur_samplerate);
 	}
 
@@ -613,7 +615,9 @@ static unsigned int get_timeout(struct dev_context *devc)
 
 	total_size = get_buffer_size(devc) * get_number_of_transfers(devc);
 	timeout = total_size / bytes_per_ms(devc);
-	return timeout + timeout / 4; /* Leave a headroom of 25% percent. */
+	//return timeout + timeout / 4; /* Leave a headroom of 25% percent. */
+        /* TODO: XXX */
+        return 1000;
 }
 
 static int configure_channels(const struct sr_dev_inst *sdi)
@@ -682,121 +686,117 @@ static int receive_data(int fd, int revents, void *cb_data)
 
 static int dev_acquisition_start(const struct sr_dev_inst *sdi, void *cb_data)
 {
-	struct sr_dev_driver *di = sdi->driver;
-	struct dev_context *devc;
-	struct drv_context *drvc;
-	struct sr_usb_dev_inst *usb;
-	struct sr_trigger *trigger;
-	struct libusb_transfer *transfer;
-	unsigned int i, timeout, num_transfers;
-	int ret;
-	unsigned char *buf;
-	size_t size, convsize;
+    struct sr_dev_driver *di = sdi->driver;
+    struct dev_context *devc;
+    struct drv_context *drvc;
+    struct sr_usb_dev_inst *usb;
+    struct sr_trigger *trigger;
+    struct libusb_transfer *transfer;
+    unsigned int i, timeout, num_transfers;
+    int ret;
+    unsigned char *buf;
+    size_t size, convsize;
 
-	if (sdi->status != SR_ST_ACTIVE)
-		return SR_ERR_DEV_CLOSED;
+    if (sdi->status != SR_ST_ACTIVE)
+            return SR_ERR_DEV_CLOSED;
 
-	drvc = di->context;
-	devc = sdi->priv;
-	usb = sdi->conn;
+    drvc = di->context;
+    devc = sdi->priv;
+    usb = sdi->conn;
 
-	sr_info("dev_acquisition_start");
+    sr_info("dev_acquisition_start");
 
-	/* Configures devc->cur_channels. */
-	if (configure_channels(sdi) != SR_OK) {
-		sr_err("Failed to configure channels.");
-		return SR_ERR;
-	}
+    /* Configures devc->cur_channels. */
+    if (configure_channels(sdi) != SR_OK) {
+            sr_err("Failed to configure channels.");
+            return SR_ERR;
+    }
 
-	devc->cb_data = cb_data;
-	devc->sent_samples = 0;
-	devc->empty_transfer_count = 0;
-	devc->cur_channel = 0;
-	memset(devc->channel_data, 0, sizeof(devc->channel_data));
+    devc->cb_data = cb_data;
+    devc->sent_samples = 0;
+    devc->empty_transfer_count = 0;
+    devc->cur_channel = 0;
+    memset(devc->channel_data, 0, sizeof(devc->channel_data));
 
-	devc->trigger_fired = TRUE;
+    devc->trigger_fired = TRUE;
 
-	timeout = get_timeout(devc);
-	num_transfers = get_number_of_transfers(devc);
-	size = get_buffer_size(devc);
-	convsize = (size / devc->num_channels + 2) * 16;
-	devc->submitted_transfers = 0;
+    timeout = get_timeout(devc);
+    num_transfers = get_number_of_transfers(devc);
+    size = get_buffer_size(devc);
+    convsize = (size / devc->num_channels + 2) * 16;
+    devc->submitted_transfers = 0;
 
-	devc->convbuffer_size = convsize;
-	if (!(devc->convbuffer = g_try_malloc(convsize))) {
-		sr_err("Conversion buffer malloc failed.");
-		return SR_ERR_MALLOC;
-	}
+    devc->convbuffer_size = convsize;
+    if (!(devc->convbuffer = g_try_malloc(convsize))) {
+            sr_err("Conversion buffer malloc failed.");
+            return SR_ERR_MALLOC;
+    }
 
-	devc->transfers = g_try_malloc0(sizeof(*devc->transfers) * num_transfers);
-	if (!devc->transfers) {
-		sr_err("USB transfers malloc failed.");
-		g_free(devc->convbuffer);
-		return SR_ERR_MALLOC;
-	}
+    devc->transfers = g_try_malloc0(sizeof(*devc->transfers) * num_transfers);
+    if (!devc->transfers) {
+            sr_err("USB transfers malloc failed.");
+            g_free(devc->convbuffer);
+            return SR_ERR_MALLOC;
+    }
 
-	if ((ret = logic16_setup_acquisition(sdi, devc->cur_samplerate,
-					     devc->cur_channels)) != SR_OK) {
-		g_free(devc->transfers);
-		g_free(devc->convbuffer);
-		return ret;
-	}
+    if ((ret = logic16_setup_acquisition(sdi, devc->cur_samplerate,
+                                         devc->cur_channels)) != SR_OK) {
+            g_free(devc->transfers);
+            g_free(devc->convbuffer);
+            return ret;
+    }
 
-	devc->num_transfers = num_transfers;
-	for (i = 0; i < num_transfers; i++) {
-		if (!(buf = g_try_malloc(size))) {
-			sr_err("USB transfer buffer malloc failed.");
-			if (devc->submitted_transfers)
-				abort_acquisition(devc);
-			else {
-				g_free(devc->transfers);
-				g_free(devc->convbuffer);
-			}
-			return SR_ERR_MALLOC;
-		}
-	
-        sr_info("libusb_alloc_transfer");
-
-		transfer = libusb_alloc_transfer(0);
-		libusb_fill_bulk_transfer(transfer, usb->devhdl,
-				2 | LIBUSB_ENDPOINT_IN, buf, size,
-				logic16_receive_transfer, (void *)sdi, timeout);
-		if ((ret = libusb_submit_transfer(transfer)) != 0) {
-			sr_err("Failed to submit transfer: %s.",
-			       libusb_error_name(ret));
-			libusb_free_transfer(transfer);
-			g_free(buf);
-			abort_acquisition(devc);
-			return SR_ERR;
-		} else {
-
-            sr_info("Transfer submitted succesfully");
-
+    devc->num_transfers = num_transfers;
+    for (i = 0; i < num_transfers; i++) {
+        if (!(buf = g_try_malloc(size))) {
+            sr_err("USB transfer buffer malloc failed.");
+            if (devc->submitted_transfers)
+                abort_acquisition(devc);
+            else {
+                g_free(devc->transfers);
+                g_free(devc->convbuffer);
+            }
+            return SR_ERR_MALLOC;
         }
 
-		devc->transfers[i] = transfer;
-		devc->submitted_transfers++;
-	}
+        sr_info("libusb_alloc_transfer");
 
-	devc->ctx = drvc->sr_ctx;
+        transfer = libusb_alloc_transfer(0);
+        libusb_fill_bulk_transfer(transfer, usb->devhdl, 2 | LIBUSB_ENDPOINT_IN, buf, size, logic16_receive_transfer, (void *)sdi, 5000);
+        if ((ret = libusb_submit_transfer(transfer)) != 0) {
+            sr_err("Failed to submit transfer: %s.", libusb_error_name(ret));
+            libusb_free_transfer(transfer);
+            g_free(buf);
+            abort_acquisition(devc);
+            return SR_ERR;
+        } else {
+
+        sr_info("Transfer submitted succesfully");
+    }
+
+            devc->transfers[i] = transfer;
+            devc->submitted_transfers++;
+    }
+
+    devc->ctx = drvc->sr_ctx;
 
     sr_info("usb_source_add");
 
-	if(usb_source_add(sdi->session, devc->ctx, timeout, receive_data, (void *)sdi) != SR_OK){
-		sr_err("usb_source_add failed");
+    if(usb_source_add(sdi->session, devc->ctx, timeout, receive_data, (void *)sdi) != SR_OK){
+        sr_err("usb_source_add failed");
     } else {
         sr_info("usb_source_add success");
     }
 
-	/* Send header packet to the session bus. */
-	std_session_send_df_header(cb_data, LOG_PREFIX);
+    /* Send header packet to the session bus. */
+    std_session_send_df_header(cb_data, LOG_PREFIX);
 
-	if ((ret = logic16_start_acquisition(sdi)) != SR_OK) {
-		abort_acquisition(devc);
-		return ret;
-	}
+    if ((ret = logic16_start_acquisition(sdi)) != SR_OK) {
+            abort_acquisition(devc);
+            return ret;
+    }
 
-	return SR_OK;
+    return SR_OK;
 }
 
 static int dev_acquisition_stop(struct sr_dev_inst *sdi, void *cb_data)

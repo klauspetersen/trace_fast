@@ -13,7 +13,7 @@ using namespace std;
 
 extern SR_PRIV struct sr_dev_driver saleae_logic16_driver_info;
 
-folly::ProducerConsumerQueue<folly::fbstring> queue;
+//folly::ProducerConsumerQueue<folly::fbstring> queue;
 struct sr_context *sr_ctx = NULL;
 
 static void consumer_recv(){
@@ -34,7 +34,9 @@ void datafeed_in(const struct sr_dev_inst *sdi, const struct sr_datafeed_packet 
         cout << "Data" << endl;
         for(int i=0; i<logic->length; i++){
             data = ((uint8_t *)(logic->data))[i];
-            cout << "value is " << unsigned(data) << endl;
+            if(data != 0){
+                //cout << "value is " << unsigned(data) << endl;
+            }
         }
     } 
 }
@@ -48,7 +50,7 @@ int main()
     GSList *devices, *l;
     GMainLoop *main_loop;
 
-    std::thread consumer_thread(consumer_recv);     // spawn new thread that calls foo()
+    std::thread consumer_thread(consumer_recv);  
 
     cout << "trace_fast!" << endl;
     
