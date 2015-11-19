@@ -19,7 +19,7 @@
  */
 
 #include <config.h>
-#include <libsigrok/libsigrok.h>
+#include "libsigrok.h"
 
 /**
  * @file

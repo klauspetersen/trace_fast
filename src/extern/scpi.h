@@ -26,7 +26,7 @@
 
 #include <stdint.h>
 #include <glib.h>
-#include <libsigrok/libsigrok.h>
+#include "libsigrok.h"
 #include "libsigrok-internal.h"
 
 #define SCPI_CMD_IDN "*IDN?"

@@ -20,7 +20,7 @@
 
 #include <config.h>
 #include <glib.h>
-#include <libsigrok/libsigrok.h>
+#include "libsigrok.h"
 #include "libsigrok-internal.h"
 
 /** @cond PRIVATE */
@@ -91,7 +91,7 @@
  *
  * @code{.c}
  *   #include <stdio.h>
- *   #include <libsigrok/libsigrok.h>
+ *   #include "libsigrok.h"
  *
  *   int main(int argc, char **argv)
  *   {

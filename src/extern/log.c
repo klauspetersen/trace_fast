@@ -22,7 +22,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <glib/gprintf.h>
-#include <libsigrok/libsigrok.h>
+#include "libsigrok.h"
 #include "libsigrok-internal.h"
 
 #define LOG_PREFIX "log"
@@ -42,7 +42,7 @@
  */
 
 /* Currently selected libsigrok loglevel. Default: SR_LOG_WARN. */
-static int cur_loglevel = SR_LOG_ERR; /* Show errors+warnings per default. */
+static int cur_loglevel = SR_LOG_INFO; /* Show errors+warnings per default. */
 
 /* Function prototype. */
 static int sr_logv(void *cb_data, int loglevel, const char *format,

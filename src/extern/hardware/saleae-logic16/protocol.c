@@ -27,7 +27,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <math.h>
-#include <libsigrok/libsigrok.h>
+#include "libsigrok.h"
 #include "libsigrok-internal.h"
 #include "protocol.h"
 
@@ -663,20 +663,20 @@ SR_PRIV int logic16_setup_acquisition(const struct sr_dev_inst *sdi,
 
 SR_PRIV int logic16_start_acquisition(const struct sr_dev_inst *sdi)
 {
-	static const uint8_t command[1] = {
-		COMMAND_START_ACQUISITION,
-	};
-	int ret;
-	struct dev_context *devc;
+    static const uint8_t command[1] = {
+            COMMAND_START_ACQUISITION,
+    };
+    int ret;
+    struct dev_context *devc;
 
-    sr_info("logic16_start_acquisition");
+sr_info("logic16_start_acquisition");
 
-	devc = sdi->priv;
+    devc = sdi->priv;
 
-	if ((ret = do_ep1_command(sdi, command, 1, NULL, 0)) != SR_OK)
-		return ret;
+    if ((ret = do_ep1_command(sdi, command, 1, NULL, 0)) != SR_OK)
+            return ret;
 
-	return write_fpga_register(sdi, FPGA_REG(STATUS_CONTROL), FPGA_STATUS_CONTROL(UNKNOWN2) | FPGA_STATUS_CONTROL(RUNNING));
+    return write_fpga_register(sdi, FPGA_REG(STATUS_CONTROL), FPGA_STATUS_CONTROL(UNKNOWN2) | FPGA_STATUS_CONTROL(RUNNING));
 }
 
 SR_PRIV int logic16_abort_acquisition(const struct sr_dev_inst *sdi)
@@ -812,7 +812,7 @@ static void resubmit_transfer(struct libusb_transfer *transfer)
 {
 	int ret;
 
-    sr_info("resubmit_transfer");
+    //sr_info("resubmit_transfer");
 
 	if ((ret = libusb_submit_transfer(transfer)) == LIBUSB_SUCCESS)
 		return;
@@ -881,14 +881,14 @@ SR_PRIV void LIBUSB_CALL logic16_receive_transfer(struct libusb_transfer *transf
 	sdi = transfer->user_data;
 	devc = sdi->priv;
 
-    sr_info("logic16_receive_transfer");
+    //sr_info("logic16_receive_transfer");
 
     if(transfer->status == LIBUSB_TRANSFER_TIMED_OUT){
         sr_err("Timed out");
     }
 
     throughput += transfer->actual_length;
-	resubmit_transfer(transfer);
+    resubmit_transfer(transfer);
 #if 0
 	/*
 	 * If acquisition has already ended, just free any queued up

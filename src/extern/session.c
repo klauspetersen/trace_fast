@@ -25,7 +25,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <glib.h>
-#include <libsigrok/libsigrok.h>
+#include "libsigrok.h"
 #include "libsigrok-internal.h"
 
 /** @cond PRIVATE */
@@ -722,7 +722,7 @@ SR_API int sr_session_start(struct sr_session *session)
 	}
 
 	if (session->trigger) {
-		ret = verify_trigger(session->trigger);
+	        ret = verify_trigger(session->trigger);
 		if (ret != SR_OK)
 			return ret;
 	}
@@ -760,36 +760,27 @@ SR_API int sr_session_start(struct sr_session *session)
 
 	/* Have all devices start acquisition. */
 	for (l = session->devs; l; l = l->next) {
-		sdi = l->data;
-		ret = sdi->driver->dev_acquisition_start(sdi, sdi);
-		if (ret != SR_OK) {
-			sr_err("Could not start %s device %s acquisition.",
-				sdi->driver->name, sdi->connection_id);
-			break;
-		} else {
-	        sr_info("Device started.");
-        }
+            sdi = l->data;
+            ret = sdi->driver->dev_acquisition_start(sdi, sdi);
+            if (ret != SR_OK) {
+                sr_err("Could not start %s device %s acquisition.", sdi->driver->name, sdi->connection_id);
+                break;
+            } else {
+                sr_info("Device started.");
+            }
 	}
 
-	if (ret != SR_OK) {
-		/* If there are multiple devices, some of them may already have
-		 * started successfully. Stop them now before returning. */
-		lend = l->next;
-		for (l = session->devs; l != lend; l = l->next) {
-			sdi = l->data;
-			if (sdi->driver->dev_acquisition_stop)
-				sdi->driver->dev_acquisition_stop(sdi, sdi);
-		}
-		/* TODO: Handle delayed stops. Need to iterate the event
-		 * sources... */
-		session->running = FALSE;
-
-		unset_main_context(session);
-		return ret;
+	/* Have all devices fire. */
+	for (l = session->devs; l; l = l->next) {
+            sdi = l->data;
+            ret = sdi->driver->dev_acquisition_trigger(sdi);
+            if (ret != SR_OK) {
+                sr_err("Could not fire %s device %s acquisition.", sdi->driver->name, sdi->connection_id);
+                break;
+            } else {
+                sr_info("Device fired.");
+            }
 	}
-
-	if (g_hash_table_size(session->event_sources) == 0)
-		stop_check_later(session);
 
 	return SR_OK;
 }

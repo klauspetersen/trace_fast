@@ -28,7 +28,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
-#include <libsigrok/libsigrok.h>
+#include "libsigrok.h"
 #include "libsigrok-internal.h"
 
 #define LOG_PREFIX "ezusb"
@@ -109,11 +109,6 @@ SR_PRIV int ezusb_upload_firmware(struct sr_context *ctx, libusb_device *dev,
 		return SR_ERR;
 	}
 
-/*
- * The libusb Darwin backend is broken: it can report a kernel driver being
- * active, but detaching it always returns an error.
- */
-#if !defined(__APPLE__)
 	if (libusb_kernel_driver_active(hdl, 0) == 1) {
 		if ((ret = libusb_detach_kernel_driver(hdl, 0)) < 0) {
 			sr_err("failed to detach kernel driver: %s",
@@ -121,7 +116,6 @@ SR_PRIV int ezusb_upload_firmware(struct sr_context *ctx, libusb_device *dev,
 			return SR_ERR;
 		}
 	}
-#endif
 
 	if ((ret = libusb_set_configuration(hdl, configuration)) < 0) {
 		sr_err("Unable to set configuration: %s",

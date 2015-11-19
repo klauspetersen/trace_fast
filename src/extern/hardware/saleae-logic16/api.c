@@ -25,7 +25,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include <libsigrok/libsigrok.h>
+#include "libsigrok.h"
 #include "libsigrok-internal.h"
 #include "protocol.h"
 
@@ -194,12 +194,12 @@ static GSList *scan(struct sr_dev_driver *di, GSList *options)
 		sdi->connection_id = g_strdup(connection_id);
 
 		for (j = 0; j < ARRAY_SIZE(channel_names); j++){
-            if(j < 8){
-			    sr_channel_new(sdi, j, SR_CHANNEL_LOGIC, TRUE, channel_names[j]);
-            } else {
-			    sr_channel_new(sdi, j, SR_CHANNEL_LOGIC, FALSE, channel_names[j]);
-            }
-        }
+                    if(j < 8){
+                        sr_channel_new(sdi, j, SR_CHANNEL_LOGIC, TRUE, channel_names[j]);
+                    } else {
+                        sr_channel_new(sdi, j, SR_CHANNEL_LOGIC, FALSE, channel_names[j]);
+                    }
+                }
 
 		devc = g_malloc0(sizeof(struct dev_context));
 		devc->selected_voltage_range = VOLTAGE_RANGE_18_33_V;
@@ -207,6 +207,7 @@ static GSList *scan(struct sr_dev_driver *di, GSList *options)
 		drvc->instances = g_slist_append(drvc->instances, sdi);
 		devices = g_slist_append(devices, sdi);
 
+#if 0
 		if (check_conf_profile(devlist[i])) {
 			/* Already has the firmware, so fix the new address. */
 			sr_dbg("Found a Logic16 device.");
@@ -216,16 +217,18 @@ static GSList *scan(struct sr_dev_driver *di, GSList *options)
 				libusb_get_bus_number(devlist[i]),
 				libusb_get_device_address(devlist[i]), NULL);
 		} else {
-			if (ezusb_upload_firmware(drvc->sr_ctx, devlist[i],
-					USB_CONFIGURATION, FX2_FIRMWARE) == SR_OK)
+#endif
+			if (ezusb_upload_firmware(drvc->sr_ctx, devlist[i], USB_CONFIGURATION, FX2_FIRMWARE) == SR_OK)
 				/* Store when this device's FW was updated. */
 				devc->fw_updated = g_get_monotonic_time();
-			else
+			else {
 				sr_err("Firmware upload failed.");
+                        }
 			sdi->inst_type = SR_INST_USB;
-			sdi->conn = sr_usb_dev_inst_new(
-				libusb_get_bus_number(devlist[i]), 0xff, NULL);
+			sdi->conn = sr_usb_dev_inst_new(libusb_get_bus_number(devlist[i]), 0xff, NULL);
+#if 0
 		}
+#endif 
 	}
 	libusb_free_device_list(devlist, 1);
 	g_slist_free_full(conn_devices, (GDestroyNotify)sr_usb_dev_inst_free);
@@ -338,50 +341,41 @@ static int dev_open(struct sr_dev_inst *sdi)
 
 	devc = sdi->priv;
 
-	/*
-	 * If the firmware was recently uploaded, wait up to MAX_RENUM_DELAY_MS
-	 * milliseconds for the FX2 to renumerate.
-	 */
 	ret = SR_ERR;
-	if (devc->fw_updated > 0) {
-		sr_info("Waiting for device to reset.");
-		/* Takes >= 300ms for the FX2 to be gone from the USB bus. */
-		g_usleep(300 * 1000);
-		timediff_ms = 0;
-		while (timediff_ms < MAX_RENUM_DELAY_MS) {
-			if ((ret = logic16_dev_open(sdi)) == SR_OK)
-				break;
-			g_usleep(100 * 1000);
+        sr_info("Waiting for device to reset.");
+        /* Takes >= 300ms for the FX2 to be gone from the USB bus. */
+        g_usleep(300 * 1000);
+        timediff_ms = 0;
+        while (timediff_ms < MAX_RENUM_DELAY_MS) {
+                if ((ret = logic16_dev_open(sdi)) == SR_OK)
+                        break;
+                g_usleep(100 * 1000);
 
-			timediff_us = g_get_monotonic_time() - devc->fw_updated;
-			timediff_ms = timediff_us / 1000;
-			sr_spew("Waited %" PRIi64 "ms.", timediff_ms);
-		}
-		if (ret != SR_OK) {
-			sr_err("Device failed to renumerate.");
-			return SR_ERR;
-		}
-		sr_info("Device came back after %" PRIi64 "ms.", timediff_ms);
-	} else {
-		sr_info("Firmware upload was not needed.");
-		ret = logic16_dev_open(sdi);
-	}
+                timediff_us = g_get_monotonic_time() - devc->fw_updated;
+                timediff_ms = timediff_us / 1000;
+                sr_spew("Waited %" PRIi64 "ms.", timediff_ms);
+        }
+        if (ret != SR_OK) {
+                sr_err("Device failed to renumerate.");
+                return SR_ERR;
+        }
+        sr_info("Device came back after %" PRIi64 "ms.", timediff_ms);
 
 	if (ret != SR_OK) {
-		sr_err("Unable to open device.");
-		return SR_ERR;
+            sr_err("Unable to open device.");
+            return SR_ERR;
 	}
 
 	if (devc->cur_samplerate == 0) {
-		/* Samplerate hasn't been set; default to the slowest one. */
-		devc->cur_samplerate =  
-                /*SR_KHZ(500)*/
-                /*SR_MHZ(8)*/
-                SR_MHZ(16)
-	            /*SR_KHZ(12500)*/
-                ;
+            /* Samplerate hasn't been set; default to the slowest one. */
+            devc->cur_samplerate =  
+            /*SR_KHZ(500)*/
+            /*SR_MHZ(8)*/
+            SR_MHZ(16)
+                /*SR_KHZ(12500)*/
+            ;
 
-		sr_info("Samplerate set to %d", (uint32_t)devc->cur_samplerate);
+            sr_info("Samplerate set to %d", (uint32_t)devc->cur_samplerate);
 	}
 
 	return SR_OK;
@@ -672,7 +666,7 @@ static int receive_data(int fd, int revents, void *cb_data)
 	(void)fd;
 	(void)revents;
 
-	sr_info("receive_data");
+	//sr_info("receive_data");
 
 	sdi = cb_data;
 	di = sdi->driver;
@@ -775,12 +769,11 @@ static int dev_acquisition_start(const struct sr_dev_inst *sdi, void *cb_data)
             abort_acquisition(devc);
             return SR_ERR;
         } else {
+            sr_info("Transfer submitted succesfully");
+        }
 
-        sr_info("Transfer submitted succesfully");
-    }
-
-            devc->transfers[i] = transfer;
-            devc->submitted_transfers++;
+        devc->transfers[i] = transfer;
+        devc->submitted_transfers++;
     }
 
     devc->ctx = drvc->sr_ctx;
@@ -793,15 +786,13 @@ static int dev_acquisition_start(const struct sr_dev_inst *sdi, void *cb_data)
         sr_info("usb_source_add success");
     }
 
-    /* Send header packet to the session bus. */
-    std_session_send_df_header(cb_data, LOG_PREFIX);
-
-    if ((ret = logic16_start_acquisition(sdi)) != SR_OK) {
-            abort_acquisition(devc);
-            return ret;
-    }
 
     return SR_OK;
+}
+
+
+static int dev_acquisition_trigger(const struct sr_dev_inst *sdi){
+    return logic16_start_acquisition(sdi);
 }
 
 static int dev_acquisition_stop(struct sr_dev_inst *sdi, void *cb_data)
@@ -835,6 +826,7 @@ SR_PRIV struct sr_dev_driver saleae_logic16_driver_info = {
 	.dev_open = dev_open,
 	.dev_close = dev_close,
 	.dev_acquisition_start = dev_acquisition_start,
+	.dev_acquisition_trigger = dev_acquisition_trigger,
 	.dev_acquisition_stop = dev_acquisition_stop,
 	.context = NULL,
 };
