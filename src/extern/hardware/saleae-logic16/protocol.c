@@ -865,6 +865,8 @@ static size_t convert_sample_data(struct dev_context *devc,
 	return ret;
 }
 
+extern volatile int throughput;
+
 SR_PRIV void LIBUSB_CALL logic16_receive_transfer(struct libusb_transfer *transfer)
 {
 	gboolean packet_has_error = FALSE;
@@ -879,8 +881,15 @@ SR_PRIV void LIBUSB_CALL logic16_receive_transfer(struct libusb_transfer *transf
 	sdi = transfer->user_data;
 	devc = sdi->priv;
 
-        sr_info("logic16_receive_transfer");
+    sr_info("logic16_receive_transfer");
 
+    if(transfer->status == LIBUSB_TRANSFER_TIMED_OUT){
+        sr_err("Timed out");
+    }
+
+    throughput += transfer->actual_length;
+	resubmit_transfer(transfer);
+#if 0
 	/*
 	 * If acquisition has already ended, just free any queued up
 	 * transfer that come in.
@@ -890,8 +899,7 @@ SR_PRIV void LIBUSB_CALL logic16_receive_transfer(struct libusb_transfer *transf
 		return;
 	}
 
-	sr_info("receive_transfer(): status %s received %d bytes.",
-		libusb_error_name(transfer->status), transfer->actual_length);
+	sr_info("receive_transfer(): status %s received %d bytes.",	libusb_error_name(transfer->status), transfer->actual_length);
 
 	switch (transfer->status) {
 	case LIBUSB_TRANSFER_NO_DEVICE:
@@ -955,5 +963,5 @@ SR_PRIV void LIBUSB_CALL logic16_receive_transfer(struct libusb_transfer *transf
                     return;
             }
 	}
-	resubmit_transfer(transfer);
+#endif
 }

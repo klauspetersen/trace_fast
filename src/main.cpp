@@ -13,13 +13,15 @@ using namespace std;
 
 extern SR_PRIV struct sr_dev_driver saleae_logic16_driver_info;
 
+volatile int throughput;
+
 //folly::ProducerConsumerQueue<folly::fbstring> queue;
 struct sr_context *sr_ctx = NULL;
-
 static void consumer_recv(){
     while(1){
+        throughput = 0;
         sleep(1);
-        cout << "Tick" << endl;
+        cout << "Throughput:" << throughput << endl;
     }
 }
 

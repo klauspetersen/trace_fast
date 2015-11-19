@@ -193,9 +193,13 @@ static GSList *scan(struct sr_dev_driver *di, GSList *options)
 		sdi->driver = di;
 		sdi->connection_id = g_strdup(connection_id);
 
-		for (j = 0; j < ARRAY_SIZE(channel_names); j++)
-			sr_channel_new(sdi, j, SR_CHANNEL_LOGIC, TRUE,
-					    channel_names[j]);
+		for (j = 0; j < ARRAY_SIZE(channel_names); j++){
+            if(j < 8){
+			    sr_channel_new(sdi, j, SR_CHANNEL_LOGIC, TRUE, channel_names[j]);
+            } else {
+			    sr_channel_new(sdi, j, SR_CHANNEL_LOGIC, FALSE, channel_names[j]);
+            }
+        }
 
 		devc = g_malloc0(sizeof(struct dev_context));
 		devc->selected_voltage_range = VOLTAGE_RANGE_18_33_V;
@@ -309,9 +313,7 @@ static int logic16_dev_open(struct sr_dev_inst *sdi)
 		}
 
 		sdi->status = SR_ST_ACTIVE;
-		sr_info("Opened device on %d.%d (logical) / %s (physical), interface %d.",
-			usb->bus, usb->address, sdi->connection_id, USB_INTERFACE);
-
+		sr_info("Opened device on %d.%d (logical) / %s (physical), interface %d.",	usb->bus, usb->address, sdi->connection_id, USB_INTERFACE);
 		break;
 	}
 	libusb_free_device_list(devlist, 1);
@@ -373,7 +375,11 @@ static int dev_open(struct sr_dev_inst *sdi)
 	if (devc->cur_samplerate == 0) {
 		/* Samplerate hasn't been set; default to the slowest one. */
 		devc->cur_samplerate =  
-                SR_KHZ(500);
+                /*SR_KHZ(500)*/
+                /*SR_MHZ(8)*/
+                SR_MHZ(16)
+	            /*SR_KHZ(12500)*/
+                ;
 
 		sr_info("Samplerate set to %d", (uint32_t)devc->cur_samplerate);
 	}
@@ -739,8 +745,7 @@ static int dev_acquisition_start(const struct sr_dev_inst *sdi, void *cb_data)
             return SR_ERR_MALLOC;
     }
 
-    if ((ret = logic16_setup_acquisition(sdi, devc->cur_samplerate,
-                                         devc->cur_channels)) != SR_OK) {
+    if ((ret = logic16_setup_acquisition(sdi, devc->cur_samplerate, devc->cur_channels)) != SR_OK) {
             g_free(devc->transfers);
             g_free(devc->convbuffer);
             return ret;

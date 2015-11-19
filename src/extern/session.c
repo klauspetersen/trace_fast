@@ -360,26 +360,6 @@ SR_API int sr_session_dev_add(struct sr_session *session,
 	session->devs = g_slist_append(session->devs, sdi);
 	sdi->session = session;
 
-	/* TODO: This is invalid if the session runs in a different thread.
-	 * The usage semantics and restrictions need to be documented.
-	 */
-	if (session->running) {
-		/* Adding a device to a running session. Commit settings
-		 * and start acquisition on that device now. */
-		if ((ret = sr_config_commit(sdi)) != SR_OK) {
-			sr_err("Failed to commit device settings before "
-			       "starting acquisition in running session (%s)",
-			       sr_strerror(ret));
-			return ret;
-		}
-		if ((ret = sdi->driver->dev_acquisition_start(sdi,
-					sdi)) != SR_OK) {
-			sr_err("Failed to start acquisition of device in "
-			       "running session (%s)", sr_strerror(ret));
-			return ret;
-		}
-	}
-
 	return SR_OK;
 }
 
