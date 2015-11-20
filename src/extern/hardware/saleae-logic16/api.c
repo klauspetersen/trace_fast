@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <assert.h>
 #include "libsigrok.h"
 #include "libsigrok-internal.h"
 #include "protocol.h"
@@ -243,142 +244,157 @@ static GSList *dev_list(const struct sr_dev_driver *di)
 
 static int logic16_dev_open(struct sr_dev_inst *sdi)
 {
-	struct sr_dev_driver *di;
-	libusb_device **devlist;
-	struct sr_usb_dev_inst *usb;
-	struct libusb_device_descriptor des;
-	struct drv_context *drvc;
-	int ret, i, device_count;
-	char connection_id[64];
+    struct sr_dev_driver *di;
+    libusb_device **devlist;
+    struct sr_usb_dev_inst *usb;
+    struct libusb_device_descriptor des;
+    struct drv_context *drvc;
+    int ret, i, device_count;
+    char connection_id[64];
 
-	di = sdi->driver;
-	drvc = di->context;
-	usb = sdi->conn;
+    di = sdi->driver;
+    drvc = di->context;
+    usb = sdi->conn;
 
-	if (sdi->status == SR_ST_ACTIVE)
-		/* Device is already in use. */
-		return SR_ERR;
+    if (sdi->status == SR_ST_ACTIVE){
+        sr_err("Device already in use");
+        return SR_ERR;
+    }
 
-	device_count = libusb_get_device_list(drvc->sr_ctx->libusb_ctx, &devlist);
-	if (device_count < 0) {
-		sr_err("Failed to get device list: %s.",
-		       libusb_error_name(device_count));
-		return SR_ERR;
-	}
+    device_count = libusb_get_device_list(drvc->sr_ctx->libusb_ctx, &devlist);
 
-	for (i = 0; i < device_count; i++) {
-		libusb_get_device_descriptor(devlist[i], &des);
+    sr_info("Device count: %d", device_count);
 
-		if (des.idVendor != LOGIC16_VID || des.idProduct != LOGIC16_PID)
-			continue;
+    for (size_t idx = 0; idx < device_count; ++idx) {
+        struct libusb_device *device = devlist[idx];
+        struct libusb_device_descriptor desc = {0};
 
-		if ((sdi->status == SR_ST_INITIALIZING) ||
-				(sdi->status == SR_ST_INACTIVE)) {
-			/*
-			 * Check device by its physical USB bus/port address.
-			 */
-			usb_get_port_path(devlist[i], connection_id, sizeof(connection_id));
-			if (strcmp(sdi->connection_id, connection_id))
-				/* This is not the one. */
-				continue;
-		}
+        ret = libusb_get_device_descriptor(device, &desc);
+        assert(ret == 0);
 
-		if (!(ret = libusb_open(devlist[i], &usb->devhdl))) {
-			if (usb->address == 0xff)
-				/*
-				 * First time we touch this device after FW
-				 * upload, so we don't know the address yet.
-				 */
-				usb->address = libusb_get_device_address(devlist[i]);
-		} else {
-			sr_err("Failed to open device: %s.",
-			       libusb_error_name(ret));
-			break;
-		}
+        sr_info("Vendor:Device = %04x:%04x\n", desc.idVendor, desc.idProduct);
+    }
 
-		ret = libusb_claim_interface(usb->devhdl, USB_INTERFACE);
-		if (ret == LIBUSB_ERROR_BUSY) {
-			sr_err("Unable to claim USB interface. Another "
-			       "program or driver has already claimed it.");
-			break;
-		} else if (ret == LIBUSB_ERROR_NO_DEVICE) {
-			sr_err("Device has been disconnected.");
-			break;
-		} else if (ret != 0) {
-			sr_err("Unable to claim interface: %s.",
-			       libusb_error_name(ret));
-			break;
-		}
+    if (device_count < 0) {
+        sr_err("Failed to get device list: %s.", libusb_error_name(device_count));
+        return SR_ERR;
+    }
 
-		if ((ret = logic16_init_device(sdi)) != SR_OK) {
-			sr_err("Failed to init device.");
-			break;
-		}
+    for (i = 0; i < device_count; i++) {
+        libusb_get_device_descriptor(devlist[i], &des);
 
-		sdi->status = SR_ST_ACTIVE;
-		sr_info("Opened device on %d.%d (logical) / %s (physical), interface %d.",	usb->bus, usb->address, sdi->connection_id, USB_INTERFACE);
-		break;
-	}
-	libusb_free_device_list(devlist, 1);
+        if (des.idVendor != LOGIC16_VID || des.idProduct != LOGIC16_PID){
+            sr_info("Vendor or PID did not match.");
+            continue;
+        }
 
-	if (sdi->status != SR_ST_ACTIVE) {
-		if (usb->devhdl) {
-			libusb_release_interface(usb->devhdl, USB_INTERFACE);
-			libusb_close(usb->devhdl);
-			usb->devhdl = NULL;
-		}
-		return SR_ERR;
-	}
+        if ((sdi->status == SR_ST_INITIALIZING) || (sdi->status == SR_ST_INACTIVE)) {
+            /*
+             * Check device by its physical USB bus/port address.
+             */
+            usb_get_port_path(devlist[i], connection_id, sizeof(connection_id));
+            if (strcmp(sdi->connection_id, connection_id)){
+                sr_info("Connection id did not match");
+                /* This is not the one. */
+                continue;
+            } else {
+                sr_info("Connection match: %s", sdi->connection_id);
+            }
+        }
 
-	return SR_OK;
+        if (!(ret = libusb_open(devlist[i], &usb->devhdl))) {
+            if (usb->address == 0xff){
+                /*
+                 * First time we touch this device after FW
+                 * upload, so we don't know the address yet.
+                 */
+                usb->address = libusb_get_device_address(devlist[i]);
+            }
+        } else {
+            sr_err("Failed to open device: %s.", libusb_error_name(ret));
+            break;
+        }
+
+        ret = libusb_claim_interface(usb->devhdl, USB_INTERFACE);
+        if (ret == LIBUSB_ERROR_BUSY) {
+            sr_err("Unable to claim USB interface. Another program or driver has already claimed it.");
+            break;
+        } else if (ret == LIBUSB_ERROR_NO_DEVICE) {
+            sr_err("Device has been disconnected.");
+            break;
+        } else if (ret != 0) {
+            sr_err("Unable to claim interface: %s.", libusb_error_name(ret));
+            break;
+        }
+
+        if ((ret = logic16_init_device(sdi)) != SR_OK) {
+            sr_err("Failed to init device.");
+            break;
+        }
+
+        sdi->status = SR_ST_ACTIVE;
+        sr_info("Opened device on %d.%d (logical) / %s (physical), interface %d.",	usb->bus, usb->address, sdi->connection_id, USB_INTERFACE);
+        break;
+    }
+    libusb_free_device_list(devlist, 1);
+
+    if (sdi->status != SR_ST_ACTIVE) {
+        sr_info("Device not in active state");
+        if (usb->devhdl) {
+            libusb_release_interface(usb->devhdl, USB_INTERFACE);
+            libusb_close(usb->devhdl);
+            usb->devhdl = NULL;
+        }
+        return SR_ERR;
+    }
+
+    return SR_OK;
 }
 
 static int dev_open(struct sr_dev_inst *sdi)
 {
-	struct dev_context *devc;
-	int ret;
-	int64_t timediff_us, timediff_ms;
+    struct dev_context *devc;
+    int ret;
+    int64_t timediff_us;
 
-	devc = sdi->priv;
+    devc = sdi->priv;
 
-	ret = SR_ERR;
-        sr_info("Waiting for device to reset.");
-        /* Takes >= 300ms for the FX2 to be gone from the USB bus. */
-        g_usleep(300 * 1000);
-        timediff_ms = 0;
-        while (timediff_ms < MAX_RENUM_DELAY_MS) {
-                if ((ret = logic16_dev_open(sdi)) == SR_OK)
-                        break;
-                g_usleep(100 * 1000);
-
-                timediff_us = g_get_monotonic_time() - devc->fw_updated;
-                timediff_ms = timediff_us / 1000;
-                sr_spew("Waited %" PRIi64 "ms.", timediff_ms);
+    ret = SR_ERR;
+    sr_info("Waiting for device to reset.");
+    while (1) {
+        if ((ret = logic16_dev_open(sdi)) == SR_OK){
+            sr_info("Device found.");
+            break;
         }
-        if (ret != SR_OK) {
-                sr_err("Device failed to renumerate.");
-                return SR_ERR;
-        }
-        sr_info("Device came back after %" PRIi64 "ms.", timediff_ms);
 
-	if (ret != SR_OK) {
-            sr_err("Unable to open device.");
-            return SR_ERR;
-	}
+        sr_info("No device found.");
+        g_usleep(100 * 1000);
+    }
 
-	if (devc->cur_samplerate == 0) {
-            /* Samplerate hasn't been set; default to the slowest one. */
-            devc->cur_samplerate =  
-            /*SR_KHZ(500)*/
-            /*SR_MHZ(8)*/
-            SR_MHZ(16)
-                /*SR_KHZ(12500)*/
-            ;
+    if (ret != SR_OK) {
+        sr_err("Device failed to renumerate.");
+        return SR_ERR;
+    }
 
-            sr_info("Samplerate set to %d", (uint32_t)devc->cur_samplerate);
-	}
 
-	return SR_OK;
+    if (ret != SR_OK) {
+        sr_err("Unable to open device.");
+        return SR_ERR;
+    }
+
+    if (devc->cur_samplerate == 0) {
+        /* Samplerate hasn't been set; default to the slowest one. */
+        devc->cur_samplerate =  
+        /*SR_KHZ(500)*/
+        /*SR_MHZ(8)*/
+        SR_MHZ(16)
+            /*SR_KHZ(12500)*/
+        ;
+
+        sr_info("Samplerate set to %d", (uint32_t)devc->cur_samplerate);
+    }
+
+    return SR_OK;
 }
 
 static int dev_close(struct sr_dev_inst *sdi)

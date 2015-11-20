@@ -67,7 +67,6 @@ int main()
         return 0;
     }
 
-
     if(sr_session_datafeed_callback_add(session, datafeed_in, NULL) != SR_OK){
         g_critical("Failed to add callback");
     }

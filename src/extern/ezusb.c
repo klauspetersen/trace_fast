@@ -35,21 +35,18 @@
 
 #define FW_CHUNKSIZE (4 * 1024)
 
-SR_PRIV int ezusb_reset(struct libusb_device_handle *hdl, int set_clear)
-{
-	int ret;
-	unsigned char buf[1];
+SR_PRIV int ezusb_reset(struct libusb_device_handle *hdl, int set_clear){
+    int ret;
+    unsigned char buf[1];
 
-	sr_info("setting CPU reset mode %s...",
-		set_clear ? "on" : "off");
-	buf[0] = set_clear ? 1 : 0;
-	ret = libusb_control_transfer(hdl, LIBUSB_REQUEST_TYPE_VENDOR, 0xa0,
-				      0xe600, 0x0000, buf, 1, 100);
-	if (ret < 0)
-		sr_err("Unable to send control request: %s.",
-				libusb_error_name(ret));
+    sr_info("setting CPU reset mode %s...", set_clear ? "on" : "off");
+    buf[0] = set_clear ? 1 : 0;
+    ret = libusb_control_transfer(hdl, LIBUSB_REQUEST_TYPE_VENDOR, 0xa0, 0xe600, 0x0000, buf, 1, 100);
+    if (ret < 0){
+        sr_err("Unable to send control request: %s.", libusb_error_name(ret));
+    }
 
-	return ret;
+    return ret;
 }
 
 SR_PRIV int ezusb_install_firmware(struct sr_context *ctx,
@@ -73,20 +70,20 @@ SR_PRIV int ezusb_install_firmware(struct sr_context *ctx,
 	result = SR_OK;
 	offset = 0;
 	while (offset < length) {
-		chunksize = MIN(length - offset, FW_CHUNKSIZE);
+            chunksize = MIN(length - offset, FW_CHUNKSIZE);
 
-		ret = libusb_control_transfer(hdl, LIBUSB_REQUEST_TYPE_VENDOR |
-					      LIBUSB_ENDPOINT_OUT, 0xa0, offset,
-					      0x0000, firmware + offset,
-					      chunksize, 100);
-		if (ret < 0) {
-			sr_err("Unable to send firmware to device: %s.",
-					libusb_error_name(ret));
-			g_free(firmware);
-			return SR_ERR;
-		}
-		sr_info("Uploaded %zu bytes.", chunksize);
-		offset += chunksize;
+            ret = libusb_control_transfer(hdl, LIBUSB_REQUEST_TYPE_VENDOR |
+                                          LIBUSB_ENDPOINT_OUT, 0xa0, offset,
+                                          0x0000, firmware + offset,
+                                          chunksize, 100);
+            if (ret < 0) {
+                    sr_err("Unable to send firmware to device: %s.",
+                                    libusb_error_name(ret));
+                    g_free(firmware);
+                    return SR_ERR;
+            }
+            sr_info("Uploaded %zu bytes.", chunksize);
+            offset += chunksize;
 	}
 	g_free(firmware);
 
@@ -101,8 +98,7 @@ SR_PRIV int ezusb_upload_firmware(struct sr_context *ctx, libusb_device *dev,
 	struct libusb_device_handle *hdl;
 	int ret;
 
-	sr_info("uploading firmware to device on %d.%d",
-		libusb_get_bus_number(dev), libusb_get_device_address(dev));
+	sr_info("uploading firmware to device on %d.%d", libusb_get_bus_number(dev), libusb_get_device_address(dev));
 
 	if ((ret = libusb_open(dev, &hdl)) < 0) {
 		sr_err("failed to open device: %s.", libusb_error_name(ret));
